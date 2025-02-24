@@ -42,6 +42,7 @@ class OusterImage : public OusterProcessingNodeBase {
         declare_parameter("timestamp_mode", "");
         declare_parameter("ptp_utc_tai_offset", -37.0);
         declare_parameter("use_system_default_qos", false);
+        declare_parameter("min_scan_valid_columns_ratio", 0.0);
         create_metadata_subscriber(
             [this](const auto& msg) { metadata_handler(msg); });
         RCLCPP_INFO(get_logger(), "OusterImage: node initialized!");
@@ -94,6 +95,12 @@ class OusterImage : public OusterProcessingNodeBase {
                                                             selected_qos);
         }
 
+        auto min_scan_valid_columns_ratio = get_parameter("min_scan_valid_columns_ratio").as_double();
+        if (min_scan_valid_columns_ratio < 0.0f || min_scan_valid_columns_ratio > 1.0f) {
+            RCLCPP_FATAL(get_logger(), "min_scan_valid_columns_ratio needs to be in the range [0, 1]");
+            throw std::runtime_error("min_scan_valid_columns_ratio out of bounds!");
+        }
+
         std::vector<LidarScanProcessor> processors {
             ImageProcessor::create(
                 info, "os_lidar", /*TODO: tf_bcast.point_cloud_frame_id()*/
@@ -104,9 +111,10 @@ class OusterImage : public OusterProcessingNodeBase {
                 })
         };
 
-        lidar_packet_handler = LidarPacketHandler::create_handler(
+        lidar_packet_handler = LidarPacketHandler::create(
             info, processors, timestamp_mode,
-            static_cast<int64_t>(ptp_utc_tai_offset * 1e+9));
+            static_cast<int64_t>(ptp_utc_tai_offset * 1e+9),
+            min_scan_valid_columns_ratio);
         lidar_packet_sub = create_subscription<PacketMsg>(
                 "lidar_packets", selected_qos,
                 [this](const PacketMsg::ConstSharedPtr msg) {
@@ -115,7 +123,7 @@ class OusterImage : public OusterProcessingNodeBase {
                         // Need to redefine the Packet object and allow use of array_views
                         sensor::LidarPacket lidar_packet(msg->buf.size());
                         memcpy(lidar_packet.buf.data(), msg->buf.data(), msg->buf.size());
-                        lidar_packet.host_timestamp = static_cast<uint64_t>(rclcpp::Clock(RCL_ROS_TIME).now().nanoseconds());
+                        lidar_packet.host_timestamp = static_cast<uint64_t>(now().nanoseconds());
                         lidar_packet_handler(lidar_packet);
                     }
                 });
