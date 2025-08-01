@@ -19,6 +19,12 @@ Changelog
 * Add a padding-free point type of ``PointXYZI`` under ``ouster_ros`` namespace contrary to the pcl
   version ``pcl::PointXYZI`` for bandwith sensitive applications.
 * [BUGFIX]: Use the node clock to ensure messages report sim time in replay mode.
+* Introduce a new param ``v_reduction`` that allows reducing the number of beams count of the published
+  point cloud
+* Allow users to use ``Zenoh`` with the supplied Dockerfile and add it to the CI pipeline.
+* Introduce a new capability to suppress certain range measurements of the point cloud by providing
+  a mask image to the driver through the ``mask_path`` launch file argument.
+* [BUGFIX]: Correct the computation of ``pointcloud.is_dense`` flag.
 
 
 ouster_ros v0.13.2
