@@ -11,6 +11,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
+find_package(rosbag2_storage REQUIRED)
+find_package(rosbag2_transport REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -71,6 +74,9 @@ add_library(ouster_ros_library SHARED
 
 set(ouster_ros_library_deps
   rclcpp
+  rosbag2_cpp
+  rosbag2_storage
+  rosbag2_transport
   sensor_msgs
   geometry_msgs
   ouster_sensor_msgs
@@ -188,6 +194,27 @@ rclcpp_components_register_node(os_pcap_component
 )
 endif()
 
+# ==== bag_converter executable ====
+add_executable(bag_converter src/bag_converter.cpp)
+
+target_include_directories(bag_converter PUBLIC
+  ${_ouster_ros_INCLUDE_DIRS}
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(bag_converter
+  rclcpp
+  rosbag2_cpp
+  rosbag2_storage
+  rosbag2_transport
+  std_msgs
+  sensor_msgs
+  ouster_sensor_msgs
+)
+
+target_link_libraries(bag_converter ouster_ros_library)
+
 # ==== Test ====
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -231,6 +258,12 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+
+# Install bag_converter to the lib/ouster_ros directory for ros2 run compatibility
+install(
+  TARGETS bag_converter
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(
